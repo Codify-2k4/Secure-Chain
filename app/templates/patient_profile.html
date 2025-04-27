@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Profile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+        }
+        .card {
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            border-radius: 10px 10px 0 0;
+        }
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px;
+        }
+        .bg-success {
+            background-color: #28a745 !important;
+        }
+        .bg-info {
+            background-color: #17a2b8 !important;
+        }
+        .bg-primary {
+            background-color: #007bff !important;
+        }
+        .history-item {
+            transition: all 0.3s;
+        }
+        .history-item:hover {
+            background-color: #f8f9fa;
+        }
+        .access-status {
+            font-weight: bold;
+        }
+        .granted {
+            color: #28a745;
+        }
+        .pending {
+            color: #ffc107;
+        }
+        .doctor-name {
+            font-weight: 500;
+        }
+        .section-title {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">Patient Profile - {{ patient.name }}</h3>
+            </div>
+            <div class="card-body">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="row">
+                    <!-- Personal Details Section -->
+                    <div class="col-md-6">
+                        <h4 class="section-title"><i class="bi bi-person"></i> Personal Details</h4>
+                        <ul class="list-group mb-4">
+                            <li class="list-group-item">
+                                <strong>Name:</strong> {{ patient.name }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Age:</strong> {{ patient.age }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Condition:</strong> {{ patient.disease }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Details:</strong> {{ patient.disease_details or 'Not specified' }}
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Medications:</strong> {{ patient.prescribed_medicines or 'None prescribed' }}
+                            </li>
+                        </ul>
+
+                        <h4 class="section-title"><i class="bi bi-heart-pulse"></i> Assigned Doctor</h4>
+                        <div class="list-group mb-4">
+                            {% if doctor %}
+                                <div class="list-group-item">
+                                    <span class="doctor-name">Dr. {{ doctor.username }}</span>
+                                </div>
+                            {% else %}
+                                <div class="list-group-item">
+                                    No doctor currently assigned
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Access Control Section -->
+                    <div class="col-md-6">
+                        <h4 class="section-title"><i class="bi bi-shield-lock"></i> Access Control</h4>
+                        
+                        <!-- Pending Requests -->
+                        <div class="list-group mb-4">
+                            <div class="list-group-item bg-light">
+                                <strong>Pending Requests</strong>
+                            </div>
+                            {% if access_requests %}
+                                {% for request in access_requests %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="doctor-name">Dr. {{ request.doctor.username }}</span>
+                                        <span class="access-status pending">(Pending Approval)</span>
+                                    </div>
+                                    <div>
+                                        <a href="{{ url_for('main.grant_access', doctor_id=request.doctor.id) }}" 
+                                           class="btn btn-success btn-sm me-1">
+                                            <i class="bi bi-check"></i> Accept
+                                        </a>
+                                        <a href="{{ url_for('main.revoke_access', doctor_id=request.doctor.id) }}" 
+                                           class="btn btn-danger btn-sm">
+                                            <i class="bi bi-x"></i> Reject
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="list-group-item">
+                                    No pending access requests
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Granted Access -->
+                        <div class="list-group mb-4">
+                            <div class="list-group-item bg-light">
+                                <strong>Granted Access</strong>
+                            </div>
+                            {% if granted_access %}
+                                {% for access in granted_access %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="doctor-name">Dr. {{ access.doctor.username }}</span>
+                                        <span class="access-status granted">(Access Granted)</span>
+                                    </div>
+                                    <a href="{{ url_for('main.revoke_access', doctor_id=access.doctor.id) }}" 
+                                       class="btn btn-danger btn-sm">
+                                        <i class="bi bi-trash"></i> Revoke
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="list-group-item">
+                                    No doctors currently have access
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity History Section -->
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Activity History</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if access_logs %}
+                            <div class="list-group">
+                                {% for log in access_logs %}
+                                <div class="list-group-item history-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-file-earmark-medical"></i>
+                                            <strong>Record Accessed</strong> by Dr. {{ log.doctor_username }}
+                                            <br>
+                                            <small class="text-muted">{{ log.timestamp }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> No access activity recorded yet
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Update History Section -->
+                <div class="card mt-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-journal-text"></i> Update History</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if blockchain_data %}
+                            <div class="list-group">
+                                {% for transaction in blockchain_data %}
+                                    {% if transaction.action == 'patient_record_updated' %}
+                                    <div class="list-group-item history-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="bi bi-pencil-square"></i>
+                                                <strong>Record Updated</strong> by Dr. {{ User.query.get(transaction.doctor_id).username }}
+                                                <br>
+                                                <small class="text-muted">{{ transaction.timestamp }}</small>
+                                            </div>
+                                            {% if transaction.updated_fields %}
+                                            <button class="btn btn-sm btn-info" data-bs-toggle="modal" 
+                                                    data-bs-target="#updateModal{{ loop.index }}">
+                                                <i class="bi bi-eye"></i> View Changes
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        {% if transaction.updated_fields %}
+                                        <!-- Update Modal -->
+                                        <div class="modal fade" id="updateModal{{ loop.index }}" tabindex="-1">
+                                            <div class="modal-dialog modal-lg">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Update Details</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <h6>Disease:</h6>
+                                                                <p>{{ transaction.updated_fields.disease }}</p>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <h6>Details:</h6>
+                                                                <p>{{ transaction.updated_fields.disease_details or 'Not specified' }}</p>
+                                                            </div>
+                                                            <div class="col-md-12 mt-3">
+                                                                <h6>Medications:</h6>
+                                                                <p>{{ transaction.updated_fields.prescribed_medicines or 'None prescribed' }}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> No update history recorded yet
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('main.patient_dashboard') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <a href="{{ url_for('main.logout') }}" class="btn btn-danger">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
